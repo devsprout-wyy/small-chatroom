@@ -1,0 +1,16 @@
+# Python虚拟环境
+venv/
+
+# Python缓存文件
+__pycache__/
+*.pyc
+
+# SQLite数据库文件
+*.db
+
+# VSCode配置文件夹
+.vscode/
+
+# 系统垃圾文件
+Thumbs.db
+.DS_Store

@@ -1,17 +1,23 @@
 """阶段1：数据库代码（SQLite）"""
 import sqlite3
-import os
+#为什么选择sqlite3?
+from pathlib import Path
+from typing import Any, Sequence
 
 # 数据库文件放到本文件同目录，这样在哪个目录启动都不会找错
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chat.db")
+DB_PATH: Path = Path(__file__).resolve().parent / "chat.db"
 
 
 def get_db():
     """打开数据库连接"""
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row      # 查询结果可以用 row["字段名"] 取值
+    conn.row_factory #= sqlite3.Row      # 查询结果可以用 row["字段名"] 取值
     conn.execute("PRAGMA busy_timeout = 5000")  # 数据库被占用时最多等 5 秒，不直接报错
     return conn
+#def get_db():
+#定义函数get_db，作用：获取数据库连接对象，后面代码要操作数据库时就调用这个函数。
+
+
 
 
 def init_db():
@@ -37,10 +43,35 @@ def init_db():
     conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room_id, id)")
     # 默认房间，保证页面一打开就有地方说话
     conn.execute("INSERT OR IGNORE INTO rooms (name) VALUES ('大厅')")
+    #插入默认房间大厅。INSERT OR IGNORE：如果名字大厅已经存在，就不重复插入，避免重复创建同名房间。保证项目初始
     conn.commit()
+    #提交事务！上面所有建表、插入房间的操作，全部写入数据库文件。没有commit，改动不会保存。
     conn.close()
 
 
 if __name__ == "__main__":
     init_db()
     print(f"建表完成：{DB_PATH}")
+    
+    
+    # 1. 拿到数据库连接
+    conn = get_db()
+
+    # -------- 【插入测试消息】在这里！--------
+    conn.execute(
+        """
+        INSERT INTO messages (room_id, username, content)
+        VALUES (1, "小明", "这是一条测试消息")
+        """
+    )
+    conn.commit()
+    print("测试消息插入成功")
+    # ----------------------------------------
+
+    # -------- 【查询读取数据】在这里！--------
+    row = conn.execute("select * from messages limit 1;").fetchone()
+    print(row)
+    print(row["content"])
+    # ----------------------------------------
+
+    conn.close()
