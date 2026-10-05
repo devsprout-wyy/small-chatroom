@@ -11,7 +11,7 @@ DB_PATH: Path = Path(__file__).resolve().parent / "chat.db"
 def get_db():
     """打开数据库连接"""
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory #= sqlite3.Row      # 查询结果可以用 row["字段名"] 取值
+    conn.row_factory = sqlite3.Row      # 查询结果可以用 row["字段名"] 取值
     conn.execute("PRAGMA busy_timeout = 5000")  # 数据库被占用时最多等 5 秒，不直接报错
     return conn
 #def get_db():
@@ -48,30 +48,3 @@ def init_db():
     #提交事务！上面所有建表、插入房间的操作，全部写入数据库文件。没有commit，改动不会保存。
     conn.close()
 
-
-if __name__ == "__main__":
-    init_db()
-    print(f"建表完成：{DB_PATH}")
-    
-    
-    # 1. 拿到数据库连接
-    conn = get_db()
-
-    # -------- 【插入测试消息】在这里！--------
-    conn.execute(
-        """
-        INSERT INTO messages (room_id, username, content)
-        VALUES (1, "小明", "这是一条测试消息")
-        """
-    )
-    conn.commit()
-    print("测试消息插入成功")
-    # ----------------------------------------
-
-    # -------- 【查询读取数据】在这里！--------
-    row = conn.execute("select * from messages limit 1;").fetchone()
-    print(row)
-    print(row["content"])
-    # ----------------------------------------
-
-    conn.close()
