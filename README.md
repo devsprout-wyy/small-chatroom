@@ -1,12 +1,37 @@
-# 项目简介
+## 项目简介
 
-# 如何启动
+## 如何启动
 
-# 已实现功能
+## 已实现功能
 
-# 未完成
+## 未完成
 
-# 已知问题
+## 已知问题
+
+
+
+## 版本替代
+
+>**版本1.1：编写数据库代码**
+包含：sqlite连接、建表SQL，开启row_factory，配置busy_timeout
+
+>**版本1.2:使语法更现代**
+
+>**版本2.1：编写FastAPI基础骨架，写2个简单HTTP接口**
+获取全部房间列表，同时根据房间id，查询该房间历史消息
+
+>**版本2.2：**
+
+>**版本2.3：**
+
+>**版本2.4：**
+
+>**版本3.0：编写WebSocket核心代码：**
+维护各个房间的在线客户端连接，收到消息后：将消息存入数据库；广播给同房间所有在线用户
+
+>**版本3.1：清理了幽灵数据和脏数据，取消git对chat.db的跟踪**
+
+
 
 
 # 做过的试验
@@ -15,7 +40,7 @@
 
 
 
-# 修改痕迹/踩过的坑
+## 修改痕迹/踩过的坑
 
 
 >**1.代码语法不现代**：
@@ -53,3 +78,20 @@ def get_messages(room_id: int) -> dict:
 
     return {"room_id": room_id, "room_name": room["name"], "messages": messages}
 ```
+
+>**4.数据库里有脏数据和幽灵数据40条：**
+在3.0版本中发现：房间2被删掉了，但消息还在，造成幽灵数据36条，房间2什么时候删掉的我没有印象；还有一些超长消息。
+这些大概是deepseek的探针和我自测时产生的。但根本原因还是main.py缺少房间校验导致的，直接把任何 room_id 存进库，根本不管房间存不存在。要根治的话还是得修main.py的代码。这样"给不存在的房间发消息"会在入口就被拒绝，不会再产生幽灵数据。同理 content[:2000] 能挡住超长消息。同时我还将chat.db的数据全部删掉。
+```python
+# 在 websocket.accept() 之后、登记连接之前加：
+conn = db.get_db()
+room = conn.execute("SELECT name FROM rooms WHERE id = ?", (room_id,)).fetchone()
+if room is None:
+    conn.close()
+    await websocket.close(code=1008, reason=f"房间 {room_id} 不存在")
+    return
+```
+
+>**5..gitignore 对 chat.db 无效**
+原因：chat.db 在写这条规则之前就已经被提交了。
+我直接在终端中取消git对chat.db的跟踪。

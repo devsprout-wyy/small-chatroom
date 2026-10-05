@@ -52,6 +52,13 @@ async def chat_ws(websocket: WebSocket, room_id: int, username: str = "匿名"):
     """实时聊天：连上先收历史消息，之后收到消息就存库并广播给同房间所有人"""
     await websocket.accept()
 
+    conn = db.get_db()
+    room = conn.execute("SELECT name FROM rooms WHERE id = ?", (room_id,)).fetchone()
+    if room is None:
+        conn.close()
+        await websocket.close(code=1008, reason=f"房间 {room_id} 不存在")
+        return
+
     # 登记这条连接
     rooms.setdefault(room_id, []).append((websocket, username))
 
