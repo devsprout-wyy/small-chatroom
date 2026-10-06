@@ -51,6 +51,7 @@ def get_messages(room_id: int):
 async def chat_ws(websocket: WebSocket, room_id: int, username: str = "匿名"):
     """实时聊天：连上先收历史消息，之后收到消息就存库并广播给同房间所有人"""
     await websocket.accept()
+    username = username.strip()[:20] or "匿名"
 
     conn = db.get_db()
     room = conn.execute("SELECT name FROM rooms WHERE id = ?", (room_id,)).fetchone()
@@ -75,10 +76,19 @@ async def chat_ws(websocket: WebSocket, room_id: int, username: str = "匿名"):
 
     try:
         while True:
-            data = await websocket.receive_json()      # 等这个客户端发消息
+            try:
+                data = await websocket.receive_json()
+            except WebSocketDisconnect:
+                raise                                  # 真的断线：抛出去，交给外层和 finally
+            except Exception:
+                await websocket.send_json(
+                    {'type': 'error', 'content': '消息格式不正确，应为 {"content": "正文"}'})
+                continue                               # 只是格式错：提示后继续等
+            
             content = str(data.get("content", "")).strip()
             if not content:
-                continue                               # 空消息不存也不发
+                continue 
+            content = content[:2000]                                 
 
             # ① 存进数据库。用参数化插入，不拼 SQL，天然防注入
             conn = db.get_db()
@@ -95,9 +105,12 @@ async def chat_ws(websocket: WebSocket, room_id: int, username: str = "匿名"):
             frame = {"type": "message", "room_id": room_id, **dict(row)}
             for ws, _ in list(rooms[room_id]):
                 try:
-                    await ws.send_json(frame, ensure_ascii=False)   # ← Bug 2
-                except Exception:
-                    pass          # 这个连接已经断了，忽略即可
+                    #await ws.send_json(frame, ensure_ascii=False)  有bug
+                    await ws.send_json(frame)
+                #except Exception: 补一层保护
+                except Exception as e:
+                    print(f"[广播失败] {type(e).__name__}: {e}")
+                            
 
     except WebSocketDisconnect:
         pass                  # 正常关页面/关标签页，不算错误
@@ -106,12 +119,11 @@ async def chat_ws(websocket: WebSocket, room_id: int, username: str = "匿名"):
     finally:
         # 客户端离开：从在线表里摘掉，房间空了就删掉这个 key
         rooms[room_id] = [(ws, u) for ws, u in rooms.get(room_id, []) if ws is not websocket]
-        if not rooms[room_id]:        # ← Bug 5：key 不存在时 KeyError
+        if not rooms[room_id]:     
             del rooms[room_id]
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    # 端口用 8010：8000 是好几个项目的默认端口，容易和别的服务撞车
     uvicorn.run("main:app", host="127.0.0.1", port=8010, reload=True)
