@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-
+from pathlib import Path   
+from fastapi.staticfiles import StaticFiles 
 import db
 
 app = FastAPI(title="极简聊天室")
@@ -11,9 +12,9 @@ db.init_db()          # 启动时建表，已存在就跳过
 rooms: dict[int, list[tuple[WebSocket, str]]] = {}
 
 
-@app.get("/")
-def home():
-    """根路径，用来确认服务是否活着"""
+@app.get("/api/health")
+def health():
+    """服务健康检查（原来在 / 上，现在 / 留给前端页面）"""
     return {"service": "极简聊天室", "status": "ok", "docs": "/docs"}
 
 
@@ -122,6 +123,9 @@ async def chat_ws(websocket: WebSocket, room_id: int, username: str = "匿名"):
         if not rooms[room_id]:     
             del rooms[room_id]
 
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
