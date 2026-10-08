@@ -56,6 +56,7 @@ const text = document.getElementById('text');
 const send = document.getElementById('send');
 const name = document.getElementById('name');
 let ws = null;                        // 当前 WebSocket 连接
+let currentName = '';                 // 当前连接使用的昵称（用于判断是否需要重连）
 // 把一条消息渲染到页面上
 function addMsg(who, content, mine) {
   const row = document.createElement('div');
@@ -98,6 +99,7 @@ function connect() {
   box.innerHTML = '<div class="empty">正在加载…</div>';
   const id = roomList.value;
   const who = name.value.trim() || '游客';
+  currentName = who;                              // 记下这次连接用的昵称
   const url = (location.protocol === 'https:' ? 'wss://' : 'ws://')
             + location.host + '/ws?room_id=' + id + '&username=' + encodeURIComponent(who);
   ws = new WebSocket(url);
@@ -131,6 +133,14 @@ function sendMsg() {
 roomList.onchange = connect;                      // 切换房间
 send.onclick = sendMsg;
 text.onkeydown = (e) => { if (e.key === 'Enter') sendMsg(); };
+// 改昵称后按 Enter 立即生效：昵称是"连接时"传给服务端的，      
+// 不重连的话服务端还在用旧名字，所以这里主动重连一次
+name.onkeydown = (e) => {
+  if (e.key !== 'Enter') return;
+  const who = name.value.trim() || '游客';
+  if (who === currentName) return;                // 没改就不用重连
+  connect();                                      // 用新昵称重连
+};                                 
 // ---------- 启动 ----------
 (async () => {
   await loadRooms();
