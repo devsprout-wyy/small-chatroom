@@ -1,7 +1,8 @@
+from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from pathlib import Path   
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect 
 from fastapi.staticfiles import StaticFiles 
+
 import db
 
 app = FastAPI(title="极简聊天室")
@@ -65,15 +66,16 @@ async def chat_ws(websocket: WebSocket, room_id: int, username: str = "匿名"):
     rooms.setdefault(room_id, []).append((websocket, username))
 
     # 进房间先发历史消息
-    conn = db.get_db()
-    rows = conn.execute(
-        "SELECT id, username, content, created_at FROM messages "
-        "WHERE room_id = ? ORDER BY id",
-        (room_id,))
-    await websocket.send_json(
-        {"type": "history", "room_id": room_id,
-         "messages": [dict(row) for row in rows]})
-    conn.close()
+    try:
+        rows = conn.execute(
+            "SELECT id, username, content, created_at FROM messages "
+            "WHERE room_id = ? ORDER BY id",
+            (room_id,))
+        await websocket.send_json(
+            {"type": "history", "room_id": room_id,
+            "messages": [dict(row) for row in rows]})
+    finally:
+        conn.close()
 
     try:
         while True:
@@ -110,8 +112,7 @@ async def chat_ws(websocket: WebSocket, room_id: int, username: str = "匿名"):
                     await ws.send_json(frame)
                 #except Exception: 补一层保护
                 except Exception as e:
-                    print(f"[广播失败] {type(e).__name__}: {e}")
-                            
+                    print(f"[广播失败] {type(e).__name__}: {e}")                       
 
     except WebSocketDisconnect:
         pass                  # 正常关页面/关标签页，不算错误

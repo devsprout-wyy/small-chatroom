@@ -145,6 +145,9 @@ app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 
 
+**10.在4.0的main.py中同一个函数两次开库**
+改成开一次库，少一个"开了要记得关"的地方，就少一次忘记关的风险。
+
 ## 做过的试验
 
 >1.在initial commit:only db.py的db.py中插入一条测试数据并且验证row_factory
@@ -182,3 +185,7 @@ app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 **版本3.2：修改了一些3.1遗留的bug**
 
 **版本4.0：初步完成前页面的代码**
+
+**版本4.1：重新保存，之前的main.py和README.md没有保存**
+
+**版本4.2：进一步修改main.py，提高性能**
